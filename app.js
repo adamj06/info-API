@@ -46,7 +46,6 @@ app.route("/airports")
     });
   })
   .post(function(req, res) {
-    console.log(req.body.name);
     const airport = new Airport({
       name: req.body.name,
       icao: req.body.icao,
@@ -61,6 +60,54 @@ app.route("/airports")
       }
     });
   })
+  .delete(function(req, res) {
+    Airport.deleteMany({}, function(err) {
+      if(err) {
+        res.send(err);
+      } else {
+        res.send("Airport documents deleted.");
+      }
+    })
+  });
+
+app.route("/airports/:airportICAO")
+  .get(function(req, res) {
+    Airport.findOne({icao: req.params.airportICAO}, function(err, airport) {
+      if(err) {
+        res.send(err);
+      } else {
+        res.send(airport);
+      }
+    })
+  })
+  .put(function(req, res) {
+    Airport.update({icao: req.params.airportICAO}, {name: req.body.name, icao: req.body.icao, country: req.body.country}, {overwrite: true}, function(err) {
+      if(err) {
+        res.send(err);
+      } else {
+        res.send("Aiport successfully updated.");
+      }
+    })
+  })
+  .patch(function(req, res) {
+    Airport.update({icao: req.params.airportICAO}, {$set: req.body}, function(err) {
+      if(err) {
+        res.send(err);
+      } else {
+        res.send("Aiport successfully updated.");
+      }
+    })
+  })
+  .delete(function(req, res) {
+    Airport.deleteOne({icao: req.params.airportICAO}, function(err) {
+      if(err) {
+        res.send(err);
+      } else {
+        res.send("Airport successfully deleted.");
+      }
+    })
+  });
+
 
 app.listen(3000, function() {
   console.log("Server started on port 3000");
