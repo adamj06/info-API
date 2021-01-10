@@ -3,12 +3,14 @@ require('dotenv').config()
 
 const express = require("express");
 const bodyParser = require("body-parser");
-const ejs = require("ejs");
 const mongoose = require('mongoose');
+const passport = require('passport');
+const jwt = require("jsonwebtoken");
+
+const UserModel = require("./model/user");
+require("./auth/auth");
 
 const app = express();
-
-app.set('view engine', 'ejs');
 
 app.use(bodyParser.urlencoded({
   extended: true
@@ -35,8 +37,44 @@ const airportSchema = new mongoose.Schema({
 // Database Models
 const Airport = mongoose.model('Airport', airportSchema);
 
+app.post("/signup", passport.authenticate("signup", { session: false }), async(req, res, next) => {
+  res.json({
+    message: "Signup Successful.",
+    user: req.user
+  });
+});
+
+app.post("/login", async (req, res, next) => {
+  passport.authenticate(
+    "login",
+    async (err, user, info) => {
+      try {
+        if (err || !user) {
+          const error = new Error("An error has occured.");
+
+          return next(error);
+        }
+
+        req.login(
+          user,
+          { session: false},
+          async (error) => {
+            if (error) return next(error);
+
+            const body = {_id: user._id, email: user.email};
+            const token = jwt.sign({ user: body }, process.env.AUTH_KEY);
+
+            return res.json({ token });
+          }
+        );
+      } catch (err) {
+        return next(err);
+      }
+    }
+  )(req, res, next);
+});
 app.route("/airports")
-  .get(function(req, res) {
+  .get(passport.authenticate('jwt', { session: false }), function(req, res) {
     Airport.find({}, function(err, airports) {
       if(err) {
         res.send(err);
@@ -45,7 +83,7 @@ app.route("/airports")
       }
     });
   })
-  .post(function(req, res) {
+  .post(passport.authenticate('jwt', { session: false }), function(req, res) {
     const airport = new Airport({
       name: req.body.name,
       icao: req.body.icao,
@@ -60,7 +98,7 @@ app.route("/airports")
       }
     });
   })
-  .delete(function(req, res) {
+  .delete(passport.authenticate('jwt', { session: false }), function(req, res) {
     Airport.deleteMany({}, function(err) {
       if(err) {
         res.send(err);
@@ -71,7 +109,7 @@ app.route("/airports")
   });
 
 app.route("/airports/:airportICAO")
-  .get(function(req, res) {
+  .get(passport.authenticate('jwt', { session: false }), function(req, res) {
     Airport.findOne({icao: req.params.airportICAO}, function(err, airport) {
       if(err) {
         res.send(err);
@@ -80,7 +118,7 @@ app.route("/airports/:airportICAO")
       }
     })
   })
-  .put(function(req, res) {
+  .put(passport.authenticate('jwt', { session: false }), function(req, res) {
     Airport.update({icao: req.params.airportICAO}, {name: req.body.name, icao: req.body.icao, country: req.body.country}, {overwrite: true}, function(err) {
       if(err) {
         res.send(err);
@@ -89,7 +127,7 @@ app.route("/airports/:airportICAO")
       }
     })
   })
-  .patch(function(req, res) {
+  .patch(passport.authenticate('jwt', { session: false }), function(req, res) {
     Airport.update({icao: req.params.airportICAO}, {$set: req.body}, function(err) {
       if(err) {
         res.send(err);
@@ -98,7 +136,7 @@ app.route("/airports/:airportICAO")
       }
     })
   })
-  .delete(function(req, res) {
+  .delete(passport.authenticate('jwt', { session: false }), function(req, res) {
     Airport.deleteOne({icao: req.params.airportICAO}, function(err) {
       if(err) {
         res.send(err);
